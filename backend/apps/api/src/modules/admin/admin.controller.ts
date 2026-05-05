@@ -26,7 +26,7 @@ export class AdminController {
 
   async raceTest(req: Request, res: Response) {
     const { eventId, seatId, concurrentUsers } = req.body;
-    const result = await adminService.runRaceTest(eventId, seatId, concurrentUsers || 50);
+    const result = await adminService.runRaceTest(eventId, seatId, concurrentUsers || 50, req.user!.id);
     res.json({ success: true, data: result });
   }
 }

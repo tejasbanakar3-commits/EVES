@@ -103,7 +103,7 @@ export class AdminService {
     return { message: 'Demo data reset successfully' };
   }
 
-  async runRaceTest(eventId: string, seatId: string, concurrentUsers: number): Promise<RaceTestResult> {
+  async runRaceTest(eventId: string, seatId: string, concurrentUsers: number, runnerUserId: string): Promise<RaceTestResult> {
     // First ensure the seat is available
     await prisma.seat.update({
       where: { id: seatId },
@@ -119,13 +119,15 @@ export class AdminService {
 
     const startTime = Date.now();
 
-    // Simulate concurrent lock attempts
+    // Simulate concurrent lock attempts. We use the runner's real userId (so
+    // foreign keys hold) but a unique sessionId per attempt to exercise the
+    // SET NX EX atomicity. Only one sessionId can win the Redis lock.
     const attempts = Array.from({ length: concurrentUsers }, (_, i) => {
-      const userId = `race-user-${i}`;
+      const syntheticUserLabel = `race-user-${i}`;
       const sessionId = randomUUID();
-      return lockService.acquireLock(seatId, userId, sessionId).then(
-        (result) => ({ success: true, userId, lockToken: result.lockToken }),
-        (error) => ({ success: false, userId, error: error.message })
+      return lockService.acquireLock(seatId, runnerUserId, sessionId).then(
+        (result) => ({ success: true, userId: syntheticUserLabel, lockToken: result.lockToken, sessionId }),
+        (error) => ({ success: false, userId: syntheticUserLabel, error: error.message })
       );
     });
 
@@ -146,7 +148,7 @@ export class AdminService {
     });
     await redis.del(getLockKey(seatId));
     await prisma.lock.deleteMany({
-      where: { seatId, userId: { startsWith: 'race-user-' } },
+      where: { seatId, userId: runnerUserId, status: 'ACTIVE' },
     });
 
     return {
