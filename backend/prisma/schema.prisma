@@ -1,0 +1,216 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum EventType {
+  TRAIN
+  BUS
+  CINEMA
+  EVENT
+  STADIUM
+}
+
+enum EventStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  LOCKED
+  BOOKED
+}
+
+enum LockStatus {
+  ACTIVE
+  EXPIRED
+  RELEASED
+  CONVERTED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum SimulationType {
+  SUCCESS
+  FAILURE
+  TIMEOUT
+  CRASH
+}
+
+enum RecoveryReason {
+  LOCK_EXPIRED
+  REDIS_KEY_MISSING
+  MANUAL_TRIGGER
+}
+
+enum RecoveryStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  role      UserRole @default(CUSTOMER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  locks    Lock[]
+  bookings Booking[]
+  payments Payment[]
+  seats    Seat[]    @relation("LockedByUser")
+
+  @@map("users")
+}
+
+model Event {
+  id          String      @id @default(uuid())
+  title       String
+  type        EventType
+  source      String?
+  destination String?
+  venue       String?
+  eventDate   DateTime    @map("event_date")
+  totalSeats  Int         @map("total_seats")
+  rows        Int         @default(10)
+  columns     Int         @default(10)
+  status      EventStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  seats    Seat[]
+  locks    Lock[]
+  bookings Booking[]
+
+  @@map("events")
+}
+
+model Seat {
+  id           String     @id @default(uuid())
+  eventId      String     @map("event_id")
+  seatNumber   String     @map("seat_number")
+  rowLabel     String     @map("row_label")
+  columnNumber Int        @map("column_number")
+  status       SeatStatus @default(AVAILABLE)
+  lockedBy     String?    @map("locked_by")
+  lockedUntil  DateTime?  @map("locked_until")
+  version      Int        @default(0)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  lockedByUser User?         @relation("LockedByUser", fields: [lockedBy], references: [id])
+  locks        Lock[]
+  bookings     Booking[]
+  recoveryLogs RecoveryLog[]
+
+  @@unique([eventId, seatNumber])
+  @@index([eventId, status])
+  @@index([status, lockedUntil])
+  @@map("seats")
+}
+
+model Lock {
+  id         String     @id @default(uuid())
+  seatId     String     @map("seat_id")
+  eventId    String     @map("event_id")
+  userId     String     @map("user_id")
+  sessionId  String     @map("session_id")
+  lockToken  String     @unique @map("lock_token")
+  status     LockStatus @default(ACTIVE)
+  lockedAt   DateTime   @default(now()) @map("locked_at")
+  expiresAt  DateTime   @map("expires_at")
+  releasedAt DateTime?  @map("released_at")
+
+  seat         Seat          @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id])
+  recoveryLogs RecoveryLog[]
+
+  @@index([seatId, status])
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("locks")
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  bookingCode   String        @unique @map("booking_code")
+  userId        String        @map("user_id")
+  eventId       String        @map("event_id")
+  seatId        String        @map("seat_id")
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  bookingStatus BookingStatus @default(PENDING) @map("booking_status")
+  amount        Float
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id])
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seat     Seat      @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId])
+  @@index([eventId])
+  @@map("bookings")
+}
+
+model Payment {
+  id             String         @id @default(uuid())
+  bookingId      String         @map("booking_id")
+  userId         String         @map("user_id")
+  amount         Float
+  status         PaymentStatus  @default(PENDING)
+  simulationType SimulationType @map("simulation_type")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([bookingId])
+  @@map("payments")
+}
+
+model RecoveryLog {
+  id             String         @id @default(uuid())
+  seatId         String         @map("seat_id")
+  eventId        String         @map("event_id")
+  lockId         String?        @map("lock_id")
+  reason         RecoveryReason
+  recoveryStatus RecoveryStatus @map("recovery_status")
+  recoveredAt    DateTime       @default(now()) @map("recovered_at")
+
+  seat Seat  @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  lock Lock? @relation(fields: [lockId], references: [id])
+
+  @@index([seatId])
+  @@index([recoveredAt])
+  @@map("recovery_logs")
+}

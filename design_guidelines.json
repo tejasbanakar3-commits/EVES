@@ -1,0 +1,129 @@
+{
+  "project_name": "Eves - Real-Time Seat Booking",
+  "theme": "light",
+  "archetype": "Archetype 4: Swiss & High-Contrast (Adapted for Technical SaaS / Ops Dashboard)",
+  "global_design_philosophy": "A hybrid product bridging a premium consumer ticketing experience with a hardcore technical ops dashboard. Emphasize clarity over density. Use the 'Control Room' grid layout for the admin area, and the 'Bento' grid for the landing page. Data states (Locked, Available, Booked) must be instantly readable within 2 seconds using the predefined contrast-heavy palette.",
+  "colors": {
+    "background": {
+      "default": "bg-slate-50",
+      "surface": "bg-white",
+      "glass": "bg-white/70 backdrop-blur-xl"
+    },
+    "text": {
+      "primary": "text-slate-900",
+      "secondary": "text-slate-500",
+      "inverse": "text-white"
+    },
+    "brand_explicit": {
+      "primary": "#2563eb",
+      "primary_tw": "blue-600",
+      "success": "#22c55e",
+      "success_tw": "green-500",
+      "warning": "#eab308",
+      "warning_tw": "yellow-500",
+      "danger": "#ef4444",
+      "danger_tw": "red-500",
+      "locked_by_me": "#8b5cf6",
+      "locked_by_me_tw": "purple-500"
+    },
+    "borders": {
+      "default": "border-slate-200",
+      "subtle": "border-slate-100"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "headings": "'Outfit', sans-serif",
+      "body": "'IBM Plex Sans', sans-serif",
+      "mono": "'JetBrains Mono', monospace"
+    },
+    "rules": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight leading-none",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight",
+      "h3": "text-xl sm:text-2xl font-medium tracking-tight",
+      "body": "text-base leading-relaxed text-slate-600",
+      "labels": "text-xs font-semibold tracking-[0.2em] uppercase text-slate-500",
+      "numbers": "font-mono tracking-tight"
+    }
+  },
+  "spacing_and_layout": {
+    "generous_padding": "p-6 md:p-8 lg:p-12",
+    "grids": {
+      "landing_bento": "grid grid-cols-1 md:grid-cols-12 gap-8",
+      "dashboard_control_room": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6",
+      "seat_matrix": "grid gap-2"
+    },
+    "borders": "rounded-none md:rounded-lg",
+    "shadows": {
+      "subtle": "shadow-sm",
+      "hover": "shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+    }
+  },
+  "components": {
+    "seat_grid_cell": {
+      "description": "The hero interaction piece. Must feel alive. Use 1px sharp borders.",
+      "states": {
+        "available": "bg-white border-slate-200 hover:border-blue-600 hover:bg-blue-50 text-slate-600 cursor-pointer",
+        "locked_by_other": "bg-yellow-100 border-yellow-500 text-yellow-700 cursor-not-allowed opacity-75",
+        "locked_by_me": "bg-purple-100 border-purple-500 text-purple-700 shadow-[0_0_15px_rgba(139,92,246,0.3)] cursor-pointer ring-2 ring-purple-500 ring-offset-2",
+        "booked": "bg-slate-100 border-slate-300 text-slate-400 cursor-not-allowed opacity-50"
+      },
+      "animation": "transition-all duration-200 ease-in-out"
+    },
+    "ticket_card": {
+      "description": "Premium booking detail view. Uses the generated ticket texture.",
+      "styles": "relative bg-white border border-slate-200 shadow-xl overflow-hidden min-h-[400px] flex flex-col md:flex-row",
+      "texture_overlay": "absolute inset-0 mix-blend-multiply opacity-40 pointer-events-none",
+      "typography": "Use JetBrains Mono for booking codes. Use Outfit for Event Title.",
+      "accents": "Add a dashed border down the middle or side to simulate a perforated ticket tear."
+    },
+    "admin_stat_card": {
+      "description": "Control room style metrics.",
+      "styles": "bg-white border border-slate-200 p-6 flex flex-col gap-2",
+      "value_style": "text-4xl font-mono font-medium text-slate-900 tracking-tighter"
+    },
+    "race_condition_visualizer": {
+      "description": "Admin page component to visualize 50 users racing for 1 seat.",
+      "styles": "Grid of 50 small avatars/dots. 1 turns green (winner), 49 turn red (failed). Use staggered Framer Motion animations."
+    }
+  },
+  "motion": {
+    "page_transitions": "Fade in with slight upward translation (y: 10 to 0).",
+    "locked_by_me_pulse": "Continuous subtle scale pulse (scale 1 to 1.02) using framer-motion's repeat: Infinity.",
+    "list_stagger": "Stagger children variants by 0.05s on mount."
+  },
+  "image_urls": {
+    "hero_background": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/30fbe795-f7e8-4aab-adda-3d2a2945c1a4/images/194b39196ad22cba866a57f1e0b45e3dae76bbde8a2f41aa76e20ad597f75382.png",
+      "description": "Use in the landing page hero section. Apply a bg-white/40 or bg-slate-50/60 gradient overlay so text remains readable."
+    },
+    "ticket_texture": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/30fbe795-f7e8-4aab-adda-3d2a2945c1a4/images/88dfd69f2b75ce625704957942f8130903eb360331eb7f1b049d6a3cd9e04fcd.png",
+      "description": "Use as a background image with mix-blend-multiply inside the 'Booking Details' premium ticket card."
+    },
+    "blueprint_texture": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/30fbe795-f7e8-4aab-adda-3d2a2945c1a4/images/cbf9b23e50da80a9264ace935ce38745008356621fe970f95c5885cb7d218fd6.png",
+      "description": "Use as a fixed background overlay on the Admin Dashboard pages with extreme low opacity (10-15%)."
+    },
+    "event_type_stadium": {
+      "url": "https://images.unsplash.com/photo-1765130420876-9137faaf983d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBzdGFkaXVtJTIwYXJlbmF8ZW58MHx8fHwxNzc3OTg1NzMzfDA&ixlib=rb-4.1.0&q=85",
+      "description": "Thumbnail for stadium/sports events."
+    },
+    "event_type_train": {
+      "url": "https://images.pexels.com/photos/34843209/pexels-photo-34843209.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Thumbnail for train/bus events."
+    },
+    "event_type_concert": {
+      "url": "https://images.unsplash.com/photo-1546708770-589dab7b22c7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwyfHxjb25jZXJ0JTIwY3Jvd2QlMjBsaXZlJTIwbXVzaWN8ZW58MHx8fHwxNzc3OTg1NzMzfDA&ixlib=rb-4.1.0&q=85",
+      "description": "Thumbnail for cinema/live concert events."
+    }
+  },
+  "instructions_to_main_agent": {
+    "framework": "React 19 + Vite (Vanilla JS). Do NOT generate .tsx files. Use .jsx or .js extensions.",
+    "testing": "All interactive elements (buttons, seat cells, form inputs) MUST include a 'data-testid' attribute (e.g. data-testid='seat-12-available').",
+    "icons": "Use 'lucide-react' for all iconography as it is pre-installed and lightweight.",
+    "ui_components": "Use custom raw HTML/Tailwind for the marketing Landing Page. Use customized Shadcn UI components for Auth, Dashboards, and Forms. Override Shadcn default rounded borders to 'rounded-none' or max 'rounded-md' to fit the Swiss Tech aesthetic.",
+    "real_time": "Integrate Socket.IO client tightly with the Seat Grid component to reflect live state changes without refreshing.",
+    "accessibility": "Ensure text contrast on the Locked-by-me (Purple) and Danger (Red) states is minimum WCAG AA."
+  }
+}
