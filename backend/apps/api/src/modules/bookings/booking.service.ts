@@ -49,7 +49,7 @@ export class BookingService {
         status: string;
       }>>`
         SELECT id, event_id, status FROM seats
-        WHERE id = ${seatId}::uuid
+        WHERE id = ${seatId}
         FOR UPDATE
       `;
 

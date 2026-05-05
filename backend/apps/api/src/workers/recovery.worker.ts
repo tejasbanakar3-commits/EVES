@@ -49,7 +49,7 @@ export async function runRecoveryPass(): Promise<{
           event_id: string;
         }>>`
           SELECT id, status, event_id FROM seats
-          WHERE id = ${seat.id}::uuid
+          WHERE id = ${seat.id}
           FOR UPDATE
         `;
 

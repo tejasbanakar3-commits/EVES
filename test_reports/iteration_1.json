@@ -1,0 +1,63 @@
+{
+  "summary": "Comprehensive backend + frontend testing for Eves (Node/Express + PG + Redis + Socket.IO) with premium React frontend. 22/23 backend tests pass; frontend core flows (login, events list, seat grid, seat lock + countdown, admin dashboard, race-sim page, bookings) render real data with no runtime errors. Single backend defect found: /api/admin/race-test returns successCount=0 (foreign-key violation on synthetic race-user-N ids).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/admin/race-test",
+        "issue": "Always returns successCount=0, failedCount=N. Root cause (confirmed in backend logs): prisma.lock.create + seat.update fail with 'Foreign key constraint violated: seats_locked_by_fkey' because race simulation uses synthetic userId='race-user-<i>' values that don't exist in the User table. Redis SET NX EX succeeds for one request, then the Postgres transaction throws, so no successful acquisition is ever recorded.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/seats/:seatId/lock",
+        "issue": "Returns 201 Created (not 200). Not strictly wrong, but frontend/docs should agree on status code."
+      },
+      {
+        "endpoint": "POST /api/payments/simulate-*",
+        "issue": "Zod schema requires `amount` in body even though the server already knows the seat price. Tests had to re-send seat.price. Consider deriving amount from seat/lock server-side for race/crash safety."
+      },
+      {
+        "endpoint": "GET /api/auth/me",
+        "issue": "Returns user object directly under `data` (data.email) whereas /api/auth/login returns data.user.email. Inconsistent shape."
+      },
+      {
+        "endpoint": "logs",
+        "issue": "Backend logs show residual 'operator does not exist: text = uuid' errors (42883) from a raw query, indicating at least one un-fixed ::uuid cast still triggers on some code path."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Seat grid", "issues": ["Minor: stage label ('SCREEN · STAGE · ENTRY') tracking looks tight; fine overall."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_eves_backend.py",
+    "/app/test_reports/pytest/iteration.xml"
+  ],
+  "action_items": [
+    "FIX race-test: in admin.service.ts runRaceTest, either (a) create ephemeral User rows for race-user-<i>, (b) reuse a fixed pool of real user ids, or (c) use the authenticated admin's user id with distinct sessionIds so the PG transaction's FK is satisfied.",
+    "Investigate remaining '::uuid' raw-query cast causing 'operator does not exist: text = uuid' in logs; likely inside LOCK_VERIFY_AND_DELETE_SCRIPT or recovery worker.",
+    "Make /api/auth/me return the same shape as /api/auth/login (wrap in {user: ...}) or update docs/frontend accordingly.",
+    "Consider returning 200 (not 201) for idempotent lock or document 201 explicitly in API contract."
+  ],
+  "critical_code_review_comments": [
+    "race-test uses synthetic userIds but prisma.lock.userId is an FK to User — guaranteed failure.",
+    "Payment endpoints trust client-supplied `amount`; should validate against seat price server-side.",
+    "lock.service.ts builds lockValue=`${userId}:${sessionId}` which requires sessionId uuid validation but only via zod on route — double-check session consistency across recovery/release scripts.",
+    "server.py wrapper using os.execvp + supervisor program name `backend` is clever but conceals Node errors; consider dedicated supervisor program named `node-api` for clarity."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_eves_backend.py"
+  ],
+  "success_rate": {"backend": "95.6% (22/23)", "frontend": "100% of smoke flows"},
+  "test_credentials": "user@eves.io / user123 ; admin@eves.io / admin123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Ran POST /api/admin/reset-demo as session fixture to ensure clean seat inventory before each run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend test suite lives at /app/backend/tests/test_eves_backend.py and uses pytest. REACT_APP_BACKEND_URL from env. Lock body requires sessionId as UUID. Payment endpoints require `amount`. Lock endpoint returns 201. /api/auth/me returns user directly under data. Race-test is the single failing test due to FK bug; all other flows (auth, events, seats, locks, 4 payment flows, admin, recovery) pass. Frontend pages load with real data, seat click locks with 5-min timer, admin role is enforced on /admin for non-admins with a friendly 'Admin only' notice.",
+  "rca of the issue": "race-test: lockService.acquireLock inserts into Postgres with userId='race-user-<i>'. schema.prisma declares Lock.userId and Seat.lockedBy as FKs to User.id. Those synthetic ids don't exist, so the $transaction throws ForeignKeyConstraintViolation AFTER the Redis SET NX succeeded. Result: Redis keeps a stale lock for TTL=5min (recovered later), and successCount=0. Fix: seed real users or replace the first winning userId with an admin/system user id that exists in User table."
+}
