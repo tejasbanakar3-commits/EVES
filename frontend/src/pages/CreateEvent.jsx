@@ -128,7 +128,6 @@ function ManualForm({ onCreated }) {
         setError("");
         if (!form.title.trim()) return setError("Title is required");
         if (totalSeats < 1) return setError("Rows × Columns must be at least 1");
-        if (totalSeats > 2500) return setError("Max 2500 seats (50 × 50)");
         const payload = {
             title: form.title.trim(),
             type: form.type,

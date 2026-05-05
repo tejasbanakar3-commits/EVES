@@ -27,6 +27,16 @@ export class EventService {
   }
 
   async createEvent(data: CreateEventInput) {
+    const type = data.type;
+    if (type === 'TRAIN' || type === 'BUS') {
+      if (!data.source?.trim() || !data.destination?.trim()) {
+        throw new ValidationError('source and destination are required for TRAIN and BUS events');
+      }
+    } else {
+      if (!data.venue?.trim()) {
+        throw new ValidationError('venue is required for CINEMA, EVENT and STADIUM events');
+      }
+    }
     const event = await prisma.event.create({
       data: {
         title: data.title,
@@ -97,6 +107,9 @@ export class EventService {
   }> {
     if (!Array.isArray(items)) {
       throw new ValidationError('Import payload must be a JSON array of events');
+    }
+    if (items.length > 200) {
+      throw new ValidationError('Cannot import more than 200 events at once');
     }
 
     const results: Array<{ index: number; ok: boolean; eventId?: string; error?: string }> = [];

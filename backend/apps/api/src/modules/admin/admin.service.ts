@@ -182,6 +182,9 @@ export class AdminService {
     if (!Array.isArray(items)) {
       throw new ValidationError('Import payload must be a JSON array of bookings');
     }
+    if (items.length > 200) {
+      throw new ValidationError('Cannot import more than 200 bookings at once');
+    }
     const results: Array<{
       index: number;
       ok: boolean;

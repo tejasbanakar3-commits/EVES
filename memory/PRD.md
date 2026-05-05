@@ -48,6 +48,7 @@ supervisor programs (`/etc/supervisor/conf.d/eves-services.conf`).
 - ✅ Frontend: Landing, Login (with demo-fill buttons), Register, Events list (filter+search+type icons), Seat Selection (Socket.IO), Payment (4 scenarios), My Bookings, Premium Ticket detail (with perforation), Admin Dashboard (5s polling), Race Simulation visualizer.
 - ✅ Tailwind + Outfit/IBM Plex Sans/JetBrains Mono fonts; lock-pulse animation; ticket textures.
 - ✅ Test results: 22/23 backend (race-test fix re-verified), all frontend smoke flows pass.
+- ✅ **Iteration 2 (Jan 2026)** — Any logged-in user can create events via `/events/new` (manual form auto-generates seats). Bulk import for events (any user) and bookings (admin only) via JSON paste/upload with per-row error reporting. Server-side validation of TRAIN/BUS source+destination vs venue, 200-row import cap. 31/31 backend tests pass.
 
 ## 6. Prioritized backlog
 **P0** — Already done.
