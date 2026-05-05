@@ -188,14 +188,17 @@ export default function AdminDashboard() {
                     ) : (
                         <Table
                             head={["Event", "Seat", "User", "TTL"]}
-                            rows={locks.map((l) => [
-                                l.event?.title,
-                                <span className="font-mono">{l.seat?.seatNumber}</span>,
-                                l.user?.email,
-                                <span className={`font-mono ${l.remainingTtl < 30 ? "text-red-600" : "text-slate-700"}`}>
-                                    {l.remainingTtl}s
-                                </span>,
-                            ])}
+                            rows={locks.map((l) => ({
+                                id: l.id,
+                                cells: [
+                                    l.event?.title,
+                                    <span className="font-mono">{l.seat?.seatNumber}</span>,
+                                    l.user?.email,
+                                    <span className={`font-mono ${l.remainingTtl < 30 ? "text-red-600" : "text-slate-700"}`}>
+                                        {l.remainingTtl}s
+                                    </span>,
+                                ],
+                            }))}
                         />
                     )}
                 </Panel>
@@ -207,14 +210,17 @@ export default function AdminDashboard() {
                     ) : (
                         <Table
                             head={["When", "Seat", "Reason", "Status"]}
-                            rows={recovery.map((r) => [
-                                <span className="font-mono text-xs text-slate-500">{fmtTime(r.recoveredAt)}</span>,
-                                <span className="font-mono">{r.seat?.seatNumber || "—"}</span>,
-                                <span className="font-mono text-[10px] uppercase tracking-widest">
-                                    {r.reason}
-                                </span>,
-                                <StatusBadge status={r.recoveryStatus} size="xs" />,
-                            ])}
+                            rows={recovery.map((r) => ({
+                                id: r.id,
+                                cells: [
+                                    <span className="font-mono text-xs text-slate-500">{fmtTime(r.recoveredAt)}</span>,
+                                    <span className="font-mono">{r.seat?.seatNumber || "—"}</span>,
+                                    <span className="font-mono text-[10px] uppercase tracking-widest">
+                                        {r.reason}
+                                    </span>,
+                                    <StatusBadge status={r.recoveryStatus} size="xs" />,
+                                ],
+                            }))}
                         />
                     )}
                 </Panel>
@@ -231,14 +237,17 @@ export default function AdminDashboard() {
                     ) : (
                         <Table
                             head={["Code", "User", "Event", "Seat", "Booking", "Payment"]}
-                            rows={bookings.map((b) => [
-                                <span className="font-mono">{b.bookingCode}</span>,
-                                b.user?.email,
-                                b.event?.title,
-                                <span className="font-mono">{b.seat?.seatNumber}</span>,
-                                <StatusBadge status={b.bookingStatus} size="xs" />,
-                                <StatusBadge status={b.paymentStatus} size="xs" />,
-                            ])}
+                            rows={bookings.map((b) => ({
+                                id: b.id,
+                                cells: [
+                                    <span className="font-mono">{b.bookingCode}</span>,
+                                    b.user?.email,
+                                    b.event?.title,
+                                    <span className="font-mono">{b.seat?.seatNumber}</span>,
+                                    <StatusBadge status={b.bookingStatus} size="xs" />,
+                                    <StatusBadge status={b.paymentStatus} size="xs" />,
+                                ],
+                            }))}
                         />
                     )}
                 </Panel>
@@ -301,18 +310,21 @@ function Table({ head, rows }) {
             <table className="w-full text-left text-sm">
                 <thead>
                     <tr className="text-[10px] uppercase tracking-widest text-slate-500">
-                        {head.map((h, i) => (
-                            <th key={i} className="px-3 py-2 font-medium">
+                        {head.map((h) => (
+                            <th key={h} className="px-3 py-2 font-medium">
                                 {h}
                             </th>
                         ))}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                    {rows.map((r, i) => (
-                        <tr key={i} className="hover:bg-slate-50">
-                            {r.map((cell, j) => (
-                                <td key={j} className="px-3 py-2 align-middle text-slate-700">
+                    {rows.map((row) => (
+                        <tr key={row.id} className="hover:bg-slate-50">
+                            {row.cells.map((cell, j) => (
+                                <td
+                                    key={`${row.id}-${j}`}
+                                    className="px-3 py-2 align-middle text-slate-700"
+                                >
                                     {cell}
                                 </td>
                             ))}
