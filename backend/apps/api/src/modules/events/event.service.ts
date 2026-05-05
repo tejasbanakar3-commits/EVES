@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import { NotFoundError } from '../../middleware/error.middleware';
+import { NotFoundError, ValidationError } from '../../middleware/error.middleware';
 import { CreateEventInput } from '@eves/shared';
 
 export class EventService {
@@ -27,7 +27,7 @@ export class EventService {
   }
 
   async createEvent(data: CreateEventInput) {
-    return prisma.event.create({
+    const event = await prisma.event.create({
       data: {
         title: data.title,
         type: data.type,
@@ -39,6 +39,12 @@ export class EventService {
         rows: data.rows,
         columns: data.columns,
       },
+    });
+    // Auto-generate seats so the event is immediately bookable
+    await this.generateSeats(event.id, data.rows, data.columns);
+    return prisma.event.findUnique({
+      where: { id: event.id },
+      include: { _count: { select: { seats: true, bookings: true } } },
     });
   }
 
@@ -76,6 +82,74 @@ export class EventService {
     });
 
     return { generated: seats.length, rows: seatRows, columns: seatCols };
+  }
+
+  /**
+   * Bulk-import events from a JSON array. Each entry is validated against
+   * `createEventSchema`-like shape; invalid entries are reported but do not
+   * abort the run.
+   */
+  async importEvents(items: unknown): Promise<{
+    total: number;
+    imported: number;
+    failed: number;
+    results: Array<{ index: number; ok: boolean; eventId?: string; error?: string }>;
+  }> {
+    if (!Array.isArray(items)) {
+      throw new ValidationError('Import payload must be a JSON array of events');
+    }
+
+    const results: Array<{ index: number; ok: boolean; eventId?: string; error?: string }> = [];
+    let imported = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      const raw = items[i] as Record<string, unknown> | null;
+      try {
+        if (!raw || typeof raw !== 'object') {
+          throw new Error('Entry must be an object');
+        }
+        const title = String(raw.title || '').trim();
+        const type = String(raw.type || '').toUpperCase();
+        const validTypes = ['TRAIN', 'BUS', 'CINEMA', 'EVENT', 'STADIUM'];
+        if (title.length < 2) throw new Error('title is required (min 2 chars)');
+        if (!validTypes.includes(type)) throw new Error(`type must be one of ${validTypes.join(', ')}`);
+        const eventDateRaw = raw.eventDate ?? raw.date;
+        if (!eventDateRaw) throw new Error('eventDate is required');
+        const eventDate = new Date(String(eventDateRaw));
+        if (Number.isNaN(eventDate.getTime())) throw new Error('eventDate is not a valid date');
+        const rows = Number(raw.rows ?? 10);
+        const columns = Number(raw.columns ?? 10);
+        if (!Number.isInteger(rows) || rows < 1 || rows > 50) throw new Error('rows must be an integer 1..50');
+        if (!Number.isInteger(columns) || columns < 1 || columns > 50) throw new Error('columns must be an integer 1..50');
+
+        const created = await this.createEvent({
+          title,
+          type: type as CreateEventInput['type'],
+          source: raw.source ? String(raw.source) : undefined,
+          destination: raw.destination ? String(raw.destination) : undefined,
+          venue: raw.venue ? String(raw.venue) : undefined,
+          eventDate: eventDate.toISOString(),
+          totalSeats: rows * columns,
+          rows,
+          columns,
+        });
+        imported++;
+        results.push({ index: i, ok: true, eventId: created?.id });
+      } catch (err: unknown) {
+        results.push({
+          index: i,
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return {
+      total: items.length,
+      imported,
+      failed: items.length - imported,
+      results,
+    };
   }
 }
 

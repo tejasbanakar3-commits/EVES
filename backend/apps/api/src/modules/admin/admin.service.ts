@@ -1,9 +1,10 @@
 import { prisma } from '../../config/database';
 import { redis, getLockKey } from '../../config/redis';
-import { env } from '../../config/env';
 import { lockService } from '../locks/lock.service';
 import { DashboardStats, RaceTestResult } from '@eves/shared';
 import { randomUUID } from 'crypto';
+import { ValidationError } from '../../middleware/error.middleware';
+import { generateBookingCode } from '../../utils/helpers';
 
 export class AdminService {
   async getDashboardStats(): Promise<DashboardStats> {
@@ -157,6 +158,125 @@ export class AdminService {
       failedCount: failures,
       winner: successes.length > 0 ? successes[0] : undefined,
       timingMs,
+    };
+  }
+
+  /**
+   * Bulk-import bookings as an admin. Each entry must reference an existing
+   * AVAILABLE seat. Booked / locked seats are skipped with an explanation.
+   * Each successful row is wrapped in a Postgres transaction with row-level
+   * locking, mirroring the production booking path (minus payment).
+   */
+  async importBookings(items: unknown): Promise<{
+    total: number;
+    imported: number;
+    failed: number;
+    results: Array<{
+      index: number;
+      ok: boolean;
+      bookingId?: string;
+      bookingCode?: string;
+      error?: string;
+    }>;
+  }> {
+    if (!Array.isArray(items)) {
+      throw new ValidationError('Import payload must be a JSON array of bookings');
+    }
+    const results: Array<{
+      index: number;
+      ok: boolean;
+      bookingId?: string;
+      bookingCode?: string;
+      error?: string;
+    }> = [];
+    let imported = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      const raw = items[i] as Record<string, unknown> | null;
+      try {
+        if (!raw || typeof raw !== 'object') throw new Error('Entry must be an object');
+        const eventId = raw.eventId ? String(raw.eventId) : '';
+        const seatId = raw.seatId ? String(raw.seatId) : '';
+        const userEmail = raw.userEmail ? String(raw.userEmail).toLowerCase().trim() : '';
+        const amount = Number(raw.amount ?? 0);
+        if (!eventId) throw new Error('eventId is required');
+        if (!seatId) throw new Error('seatId is required');
+        if (!userEmail) throw new Error('userEmail is required');
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('amount must be a positive number');
+
+        const user = await prisma.user.findUnique({ where: { email: userEmail } });
+        if (!user) throw new Error(`User with email ${userEmail} not found`);
+
+        const seat = await prisma.seat.findUnique({ where: { id: seatId } });
+        if (!seat) throw new Error('Seat not found');
+        if (seat.eventId !== eventId) throw new Error('Seat does not belong to event');
+        if (seat.status === 'BOOKED') throw new Error('Seat is already booked');
+        if (seat.status === 'LOCKED') throw new Error('Seat is currently locked');
+
+        const bookingCode = generateBookingCode();
+        const booking = await prisma.$transaction(async (tx) => {
+          const rows = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+            SELECT id, status FROM seats WHERE id = ${seatId} FOR UPDATE
+          `;
+          if (!rows.length) throw new Error('Seat vanished during import');
+          if (rows[0].status !== 'AVAILABLE') throw new Error(`Seat is ${rows[0].status}`);
+
+          const newBooking = await tx.booking.create({
+            data: {
+              bookingCode,
+              userId: user.id,
+              eventId,
+              seatId,
+              amount,
+              paymentStatus: 'SUCCESS',
+              bookingStatus: 'CONFIRMED',
+            },
+          });
+          await tx.seat.update({
+            where: { id: seatId },
+            data: {
+              status: 'BOOKED',
+              lockedBy: null,
+              lockedUntil: null,
+              version: { increment: 1 },
+            },
+          });
+          await tx.payment.create({
+            data: {
+              bookingId: newBooking.id,
+              userId: user.id,
+              amount,
+              status: 'SUCCESS',
+              simulationType: 'SUCCESS',
+            },
+          });
+          return newBooking;
+        });
+
+        // Free any stale Redis lock just in case
+        await redis.del(getLockKey(seatId));
+
+        imported++;
+        results.push({
+          index: i,
+          ok: true,
+          bookingId: booking.id,
+          bookingCode: booking.bookingCode,
+        });
+      } catch (err: unknown) {
+        results.push({
+          index: i,
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return {
+      total: items.length,
+      imported,
+      failed: items.length - imported,
+      results,
     };
   }
 }

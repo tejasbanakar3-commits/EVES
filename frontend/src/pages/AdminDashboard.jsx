@@ -7,6 +7,7 @@ import {
     AlertTriangle,
     BarChart2,
     Database,
+    FileUp,
     Loader2,
     LockKeyhole,
     Play,
@@ -150,6 +151,13 @@ export default function AdminDashboard() {
                         className="inline-flex items-center gap-1.5 rounded-md border border-slate-900 bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
                     >
                         <Play className="h-3.5 w-3.5" /> Race test
+                    </Link>
+                    <Link
+                        to="/admin/import-bookings"
+                        data-testid="admin-import-bookings-btn"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                        <FileUp className="h-3.5 w-3.5" /> Import bookings
                     </Link>
                 </div>
             </div>

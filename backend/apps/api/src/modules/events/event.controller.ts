@@ -17,6 +17,12 @@ export class EventController {
     res.status(201).json({ success: true, data: event });
   }
 
+  async importEvents(req: Request, res: Response) {
+    const items = Array.isArray(req.body) ? req.body : req.body?.events;
+    const result = await eventService.importEvents(items);
+    res.status(201).json({ success: true, data: result });
+  }
+
   async generateSeats(req: Request, res: Response) {
     const { rows, columns } = req.body;
     const result = await eventService.generateSeats(req.params.eventId, rows, columns);

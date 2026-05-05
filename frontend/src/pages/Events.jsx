@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import api, { extractError } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { EventTypeBadge } from "../components/Badges";
 import {
     Building2,
     Calendar,
     Loader2,
     MapPin,
+    Plus,
     Search,
     Train,
     Bus as BusIcon,
@@ -55,6 +57,7 @@ function fmtDate(d) {
 }
 
 export default function Events() {
+    const { isAuthenticated } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -116,6 +119,16 @@ export default function Events() {
                             className="w-full rounded-md border border-slate-200 bg-white px-9 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                         />
                     </div>
+                    {isAuthenticated && (
+                        <Link
+                            to="/events/new"
+                            data-testid="events-create-btn"
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                        >
+                            <Plus className="h-4 w-4" />
+                            <span className="hidden sm:inline">New event</span>
+                        </Link>
+                    )}
                 </div>
             </div>
 

@@ -29,6 +29,12 @@ export class AdminController {
     const result = await adminService.runRaceTest(eventId, seatId, concurrentUsers || 50, req.user!.id);
     res.json({ success: true, data: result });
   }
+
+  async importBookings(req: Request, res: Response) {
+    const items = Array.isArray(req.body) ? req.body : req.body?.bookings;
+    const result = await adminService.importBookings(items);
+    res.status(201).json({ success: true, data: result });
+  }
 }
 
 export const adminController = new AdminController();

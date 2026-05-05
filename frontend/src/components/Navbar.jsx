@@ -44,6 +44,7 @@ export default function Navbar() {
 
                 <nav className="hidden items-center gap-1 md:flex">
                     {link("/events", "Events", "nav-events")}
+                    {isAuthenticated && link("/events/new", "Create", "nav-create-event")}
                     {isAuthenticated && link("/bookings", "My Bookings", "nav-bookings")}
                     {user?.role === "ADMIN" &&
                         link("/admin", "Admin", "nav-admin")}

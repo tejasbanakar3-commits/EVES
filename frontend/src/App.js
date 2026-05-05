@@ -14,6 +14,8 @@ import MyBookings from "@/pages/MyBookings";
 import BookingDetail from "@/pages/BookingDetail";
 import AdminDashboard from "@/pages/AdminDashboard";
 import RaceSimulation from "@/pages/RaceSimulation";
+import CreateEvent from "@/pages/CreateEvent";
+import ImportBookings from "@/pages/ImportBookings";
 
 function ProtectedRoute({ children, role }) {
     const { isAuthenticated, user } = useAuth();
@@ -47,6 +49,14 @@ function Shell() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/events" element={<Events />} />
+                    <Route
+                        path="/events/new"
+                        element={
+                            <ProtectedRoute>
+                                <CreateEvent />
+                            </ProtectedRoute>
+                        }
+                    />
                     <Route path="/events/:eventId" element={<SeatSelection />} />
                     <Route
                         path="/events/:eventId/payment"
@@ -85,6 +95,14 @@ function Shell() {
                         element={
                             <ProtectedRoute role="ADMIN">
                                 <RaceSimulation />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/import-bookings"
+                        element={
+                            <ProtectedRoute role="ADMIN">
+                                <ImportBookings />
                             </ProtectedRoute>
                         }
                     />

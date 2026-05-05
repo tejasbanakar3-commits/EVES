@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 2 — verified the 3 newly-added endpoints (POST /api/events for any user, POST /api/events/import for any user, POST /api/admin/bookings/import for admin) plus the 2 new frontend pages (/events/new, /admin/import-bookings). 31/31 backend pytest cases pass (added 8 new test cases). All frontend smoke flows (navbar Create link, /events 'New event' CTA, login redirect for /events/new, manual form → /events/<id> with seat grid, Import JSON tab, Admin Dashboard link, Admin import-bookings page, non-admin fallback, fill-sample, real import returning 3/3 bookings) pass. Race-test bug from iter 1 is also fixed (1 winner / 19 fails on a 20-attempt run). No regressions detected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/events (createEventSchema)",
+        "issue": "Schema requires `totalSeats` even though service derives it from rows*columns. Frontend already sends it, but it is duplicated/redundant — could be made optional and computed server-side."
+      },
+      {
+        "endpoint": "POST /api/events",
+        "issue": "Service does not enforce source/destination for TRAIN/BUS or venue otherwise — only the frontend enforces this. A logged-in user could POST a TRAIN event with no source/destination via curl. Consider moving this rule into the Zod schema (refine) or service."
+      },
+      {
+        "endpoint": "POST /api/events/import",
+        "issue": "Allowed array length is unbounded. A user could POST 5000 rows and tie up the server in a serial loop. Suggest cap (e.g. 200) and/or batched createMany for seats."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_eves_backend.py",
+    "/app/test_reports/pytest/iteration_2.xml"
+  ],
+  "action_items": [
+    "(Minor) Make `totalSeats` optional in createEventSchema and derive on server.",
+    "(Minor) Validate source/destination/venue requirements server-side, not just in the React form, so the API is hardened against direct curl.",
+    "(Minor) Cap /events/import array length and consider createMany for seat insertion in createEvent."
+  ],
+  "critical_code_review_comments": [
+    "importBookings re-reads each seat with prisma.findUnique BEFORE entering the $transaction, then locks FOR UPDATE inside. The pre-check status is best-effort only — that's fine, but the duplicate seat lookup could be eliminated (use the SELECT inside the txn as the only source of truth) to save a round-trip per row.",
+    "importEvents calls this.createEvent in a loop, each of which does an event.create + seat.createMany + event.update + event.findUnique = 4 DB round-trips per row. For large imports this is slow; consider a single transaction per row at minimum or a bulk seat insert path.",
+    "Frontend ManualForm uses `min=1 max=50` on the rows/columns inputs, so the JS check `totalSeats > 2500` cannot actually fire (max 50*50=2500). Either remove the dead JS check or relax the input max."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_eves_backend.py"
+  ],
+  "success_rate": {"backend": "100% (31/31)", "frontend": "100% of new flows tested"},
+  "test_credentials": "user@eves.io / user123 (CUSTOMER); admin@eves.io / admin123 (ADMIN) — from /app/memory/test_credentials.md",
+  "seed_data_creation": "Each new test creates its own TEST_*-prefixed event for isolation; admin reset-demo runs once per session via existing autouse fixture.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Test suite at /app/backend/tests/test_eves_backend.py now has 31 cases. The 3 new endpoints are covered by classes TestCreateEventByCustomer, TestImportEventsByCustomer, TestImportBookings. Frontend testids to remember: create-tab-manual / create-tab-import, create-event-form, create-{title,type,source,destination,venue,date,rows,cols}-input, create-submit-btn, create-error, import-events-{panel,textarea,submit-btn,file-btn,error}, import-event-result, import-bookings-{event-select,sample-btn,textarea,submit-btn,error}, import-booking-result. Note on UI validation: HTML5 attributes (`required`, `max=50`) handle several validations BEFORE the JS path, so testing the JS error banner for those cases requires `page.evaluate` or DevTools removeAttr. Frontend ManualForm has dead 'Max 2500 seats' check — see code review.",
+  "rca of the issue": "N/A — no failing tests in this iteration."
+}
