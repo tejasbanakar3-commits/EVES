@@ -115,3 +115,13 @@ body {
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
+
+
+
+iframe[src*="emergent"],
+div[id*="emergent"],
+div[class*="emergent"] {
+  display: none !important;
+  visibility: hidden !important;
+}
